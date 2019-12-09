@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang>
+  <head><meta name="generator" content="Hexo 3.9.0">
+    
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1">
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+  <meta name="description" content="Minix IPC">
+
+
+
+
+  <meta name="keywords" content="minix,">
+
+
+
+
+
+  <link rel="alternate" href="/default" title="THE Blog">
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=1.1">
+
+
+
+<link rel="canonical" href="http://blog.xiexun.tech/minix-ipc.html">
+
+
+<meta name="description" content="Minix kernel, services and user tasksMinix services:  rs: Reincarnation Server ds: Data Store ipc: shared memory and semaphore sched: scheduler vfs: Virtual File Systems vm: Virtual Memory is: System">
+<meta name="keywords" content="minix">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Minix IPC">
+<meta property="og:url" content="http://blog.xiexun.tech/minix-ipc.html">
+<meta property="og:site_name" content="THE Blog">
+<meta property="og:description" content="Minix kernel, services and user tasksMinix services:  rs: Reincarnation Server ds: Data Store ipc: shared memory and semaphore sched: scheduler vfs: Virtual File Systems vm: Virtual Memory is: System">
+<meta property="og:locale" content="en">
+<meta property="og:image" content="http://blog.xiexun.tech/img/minix_procs.svg">
+<meta property="og:image" content="http://blog.xiexun.tech/img/minix_sys_read.svg">
+<meta property="og:updated_time" content="2019-12-09T07:51:11.959Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Minix IPC">
+<meta name="twitter:description" content="Minix kernel, services and user tasksMinix services:  rs: Reincarnation Server ds: Data Store ipc: shared memory and semaphore sched: scheduler vfs: Virtual File Systems vm: Virtual Memory is: System">
+<meta name="twitter:image" content="http://blog.xiexun.tech/img/minix_procs.svg">
+
+
+<link rel="stylesheet" type="text/css" href="/css/style.css?v=1.1">
+<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+
+
+
+
+
+<script type="text/javascript">
+  var themeConfig = {
+    fancybox: {
+      enable: false
+    },
+  };
+</script>
+
+
+
+
+  
+
+
+
+    <title> Minix IPC - THE Blog </title>
+  </head>
+
+  <body>
+    <div id="page">
+      <header id="masthead"><div class="site-header-inner">
+    <h1 class="site-title">
+        <a href="/." class="logo">THE Blog</a>
+    </h1>
+
+    <nav id="nav-top">
+        
+            <ul id="menu-top" class="nav-top-items">
+                
+                    <li class="menu-item">
+                        <a href="/archives">
+                            
+                            
+                                Archives
+                            
+                        </a>
+                    </li>
+                
+            </ul>
+        
+  </nav>
+</div>
+
+      </header>
+      <div id="content">
+        
+    <div id="primary">
+        
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">
+        
+          Minix IPC
+        
+      </h1>
+
+      <time class="post-time">
+          Dec 09 2019
+      </time>
+    </header>
+
+
+
+    
+            <div class="post-content">
+            <h1 id="Minix-kernel-services-and-user-tasks"><a href="#Minix-kernel-services-and-user-tasks" class="headerlink" title="Minix kernel, services and user tasks"></a>Minix kernel, services and user tasks</h1><p>Minix services:</p>
+<ul>
+<li>rs: Reincarnation Server</li>
+<li>ds: Data Store</li>
+<li>ipc: shared memory and semaphore</li>
+<li>sched: scheduler</li>
+<li>vfs: Virtual File Systems</li>
+<li>vm: Virtual Memory</li>
+<li>is: System Information Service</li>
+<li>mib: Manage Information Base</li>
+<li>pm: Process Manager</li>
+<li>drivers, filesystems, …</li>
+</ul>
+<p><img src="/img/minix_procs.svg" alt="minix-procs"></p>
+<h1 id="kernel-IPC"><a href="#kernel-IPC" class="headerlink" title="kernel IPC"></a>kernel IPC</h1><p>Minix kernel provides interface for IPC and kernel call. System services can do kernel IPC and kernel calls, but user process can only do kernel IPC.<br>Kernel IPC delivers 64 bytes message between processes.</p>
+<ul>
+<li>send: if receiver is not receiving, it will block</li>
+<li>receive: if no messages is sending, it will block</li>
+<li>sendrec: send and receive</li>
+<li>sendnb: non-blocking send</li>
+<li>senda: async send</li>
+<li>notify: no message</li>
+</ul>
+<h1 id="kernel-safecopy"><a href="#kernel-safecopy" class="headerlink" title="kernel safecopy"></a>kernel safecopy</h1><p>Copying data between processes is done by <code>safecopy</code> kernel call.</p>
+<ul>
+<li>Process A grants some memory in its own address space to process B</li>
+<li>Process B calls <code>safecopy</code> to read/write that memory</li>
+</ul>
+<p>Or,</p>
+<ul>
+<li>Process C grants some memory in process A’s address space to process B</li>
+<li>Process B calls <code>safecopy</code> to read/write that memory</li>
+</ul>
+<p><code>safecopy</code> first verifies the grants, and then creates temporary mapping and copy the data.</p>
+<h1 id="example-sys-read"><a href="#example-sys-read" class="headerlink" title="example: sys_read"></a>example: <code>sys_read</code></h1><ul>
+<li><p>user process calls <code>sys_read</code><br><code>sys_read</code> constructs read request message, and send that message to <code>vfs</code> by kernel IPC (<code>ipc_sendrec</code>).</p>
+</li>
+<li><p><code>vfs</code> sends read request to <code>mfs</code><br><code>vfs</code> receives the message from user, grants user buffer to <code>mfs</code>, and sends read request to <code>mfs</code></p>
+</li>
+<li><p><code>mfs</code> reads data from block device driver and writes data to user buffer using <code>safecopy</code></p>
+</li>
+</ul>
+<p><img src="/img/minix_sys_read.svg" alt="minix-procs"></p>
+<h1 id="shared-memory-and-semaphore"><a href="#shared-memory-and-semaphore" class="headerlink" title="shared memory and semaphore"></a>shared memory and semaphore</h1><p>Service <code>ipc</code> manages shared mamory and semaphore.</p>
+
+            </div>
+          
+
+    
+      <footer class="post-footer">
+		
+		<div class="post-tags">
+		  
+			<a href="/tags/minix/">minix</a>
+		  
+		</div>
+		
+
+        
+        
+  <nav class="post-nav">
+    
+    
+      <a class="next" href="/learning-markdown.html">
+        <span class="next-text nav-default">学习markdown以方便写博客</span>
+        <span class="prev-text nav-mobile">Next</span>
+        <i class="iconfont icon-right"></i>
+      </a>
+    
+  </nav>
+
+        
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+      </footer>
+    
+  </article>
+
+    </div>
+
+      </div>
+
+      <footer id="colophon"><span class="copyright-year">
+    
+        &copy;
+    
+    2019
+    <span class="footer-author">Xie Xun.</span>
+    <span class="power-by">
+        Powered by <a class="hexo-link" href="https://hexo.io/">Hexo</a> and <a class="theme-link" href="https://github.com/frostfan/hexo-theme-polarbear">Polar Bear</a>.
+    </span>
+    <span>
+        Except where otherwise noted, content on this site is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+    </span>
+</span>
+
+      </footer>
+
+      <div class="back-to-top" id="back-to-top">
+        <i class="iconfont icon-up"></i>
+      </div>
+    </div>
+    
+
+
+    
+
+
+
+
+  
+    <script type="text/javascript" src="/lib/jquery/jquery-3.1.1.min.js"></script>
+  
+
+  
+
+    <script type="text/javascript" src="/js/src/theme.js?v=1.1"></script>
+<script type="text/javascript" src="/js/src/bootstrap.js?v=1.1"></script>
+
+  </body>
+</html>

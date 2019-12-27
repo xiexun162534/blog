@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang>
+  <head><meta name="generator" content="Hexo 3.9.0">
+    
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1">
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+  <meta name="description" content="Compile Linux Kernel to LLVM Bitcode">
+
+
+
+
+  <meta name="keywords" content="LLVM,Linux,">
+
+
+
+
+
+  <link rel="alternate" href="/default" title="THE Blog">
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=1.1">
+
+
+
+<link rel="canonical" href="http://blog.xiexun.tech/compile-linux-llvm.html">
+
+
+<meta name="description" content="Tools wllvm 1.2.7 clang 9.0.1 LLVM 9.0.1 linux 5.3.6  Compile Kernel with WLLVM12make CC=wllvm defconfigmake CC=wllvm -j$(nproc)  Extract Bitcode1extract-bc vmlinux  Then vmlinux.bc is the bitcode. Cr">
+<meta name="keywords" content="LLVM,Linux">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Compile Linux Kernel to LLVM Bitcode">
+<meta property="og:url" content="http://blog.xiexun.tech/compile-linux-llvm.html">
+<meta property="og:site_name" content="THE Blog">
+<meta property="og:description" content="Tools wllvm 1.2.7 clang 9.0.1 LLVM 9.0.1 linux 5.3.6  Compile Kernel with WLLVM12make CC=wllvm defconfigmake CC=wllvm -j$(nproc)  Extract Bitcode1extract-bc vmlinux  Then vmlinux.bc is the bitcode. Cr">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2019-12-27T11:36:47.517Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Compile Linux Kernel to LLVM Bitcode">
+<meta name="twitter:description" content="Tools wllvm 1.2.7 clang 9.0.1 LLVM 9.0.1 linux 5.3.6  Compile Kernel with WLLVM12make CC=wllvm defconfigmake CC=wllvm -j$(nproc)  Extract Bitcode1extract-bc vmlinux  Then vmlinux.bc is the bitcode. Cr">
+
+
+<link rel="stylesheet" type="text/css" href="/css/style.css?v=1.1">
+<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+
+
+
+
+
+<script type="text/javascript">
+  var themeConfig = {
+    fancybox: {
+      enable: false
+    },
+  };
+</script>
+
+
+
+
+  
+
+
+
+    <title> Compile Linux Kernel to LLVM Bitcode - THE Blog </title>
+  </head>
+
+  <body>
+    <div id="page">
+      <header id="masthead"><div class="site-header-inner">
+    <h1 class="site-title">
+        <a href="/." class="logo">THE Blog</a>
+    </h1>
+
+    <nav id="nav-top">
+        
+            <ul id="menu-top" class="nav-top-items">
+                
+                    <li class="menu-item">
+                        <a href="/archives">
+                            
+                            
+                                Archives
+                            
+                        </a>
+                    </li>
+                
+            </ul>
+        
+  </nav>
+</div>
+
+      </header>
+      <div id="content">
+        
+    <div id="primary">
+        
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">
+        
+          Compile Linux Kernel to LLVM Bitcode
+        
+      </h1>
+
+      <time class="post-time">
+          Dec 27 2019
+      </time>
+    </header>
+
+
+
+    
+            <div class="post-content">
+            <h1 id="Tools"><a href="#Tools" class="headerlink" title="Tools"></a>Tools</h1><ul>
+<li><a href="https://github.com/SRI-CSL/whole-program-llvm" target="_blank" rel="noopener">wllvm</a> 1.2.7</li>
+<li><a href="https://clang.llvm.org/" target="_blank" rel="noopener">clang</a> 9.0.1</li>
+<li><a href="http://llvm.org/" target="_blank" rel="noopener">LLVM</a> 9.0.1</li>
+<li><a href="https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.3.6.tar.gz" target="_blank" rel="noopener">linux 5.3.6</a></li>
+</ul>
+<h1 id="Compile-Kernel-with-WLLVM"><a href="#Compile-Kernel-with-WLLVM" class="headerlink" title="Compile Kernel with WLLVM"></a>Compile Kernel with WLLVM</h1><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">make CC=wllvm defconfig</span><br><span class="line">make CC=wllvm -j$(nproc)</span><br></pre></td></tr></table></figure>
+
+<h1 id="Extract-Bitcode"><a href="#Extract-Bitcode" class="headerlink" title="Extract Bitcode"></a>Extract Bitcode</h1><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">extract-bc vmlinux</span><br></pre></td></tr></table></figure>
+
+<p>Then vmlinux.bc is the bitcode.</p>
+<h1 id="Cross-compile"><a href="#Cross-compile" class="headerlink" title="Cross-compile"></a>Cross-compile</h1><figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line">BINUTILS_TARGET_PREFIX=aarch64-linux-gnu make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- HOSTCC=clang CC=wllvm defconfig</span><br><span class="line">BINUTILS_TARGET_PREFIX=aarch64-linux-gnu make ARCH=arm64 CROSS_COMPILE=aarch64-linux-gnu- HOSTCC=clang CC=wllvm -j$(nproc)</span><br></pre></td></tr></table></figure>
+
+<p>Then, extract bitcode from <code>vmlinux</code>.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">extract-bc vmlinux</span><br></pre></td></tr></table></figure>
+
+<h1 id="Problems"><a href="#Problems" class="headerlink" title="Problems"></a>Problems</h1><h2 id="symbol-multiply-defined-during-bitcode-extraction"><a href="#symbol-multiply-defined-during-bitcode-extraction" class="headerlink" title="symbol multiply defined during bitcode extraction"></a>symbol multiply defined during bitcode extraction</h2><p>When extracting bitcode from vmlinux (arm64), an error occurs:</p>
+<blockquote>
+<p>error: Linking globals named ‘sort’: symbol multiply defined!</p>
+</blockquote>
+<p>Get all <code>.bc</code> file names by</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">extract-bc -m vmlinux</span><br></pre></td></tr></table></figure>
+
+<p>and it generates <code>vmlinux.llvm.manifest</code>, which is something like:</p>
+<blockquote>
+<p>/home/xx/dev/linux-5.3.6-arm-llvm/init/.main.o.bc<br>/home/xx/dev/linux-5.3.6-arm-llvm/init/.version.o.bc<br>/home/xx/dev/linux-5.3.6-arm-llvm/init/.do_mounts.o.bc<br>/home/xx/dev/linux-5.3.6-arm-llvm/init/.do_mounts_initrd.o.bc<br>/home/xx/dev/linux-5.3.6-arm-llvm/init/.initramfs.o.bc<br>/home/xx/dev/linux-5.3.6-arm-llvm/init/.calibrate.o.bc<br>/home/xx/dev/linux-5.3.6-arm-llvm/init/.init_task.o.bc<br>/home/xx/dev/linux-5.3.6-arm-llvm/arch/arm64/kernel/.debug-monitors.o.bc<br>/home/xx/dev/linux-5.3.6-arm-llvm/arch/arm64/kernel/.irq.o.bc</p>
+</blockquote>
+<p>And then use a script to find all code that defines function <code>sort</code>:</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#</span>!/bin/sh</span><br><span class="line">cat vmlinux.llvm.manifest |</span><br><span class="line">    while read line;</span><br><span class="line">    do</span><br><span class="line">        llvm-dis-9 "$line" -o .llvm.tmp.ll;</span><br><span class="line">        cat .llvm.tmp.ll | grep -n '@sort(' | grep define | sed "s|^|$&#123;line&#125;: |";</span><br><span class="line">    done</span><br></pre></td></tr></table></figure>
+
+<p>We find that <code>sort</code> has been defined in both <code>lib/.sort.o.bc</code> and <code>drivers/firmware/efi/libstub/.lib-sort.o.bc</code>.</p>
+<p>Read <code>drivers/firmware/efi/libstub/Makefile</code> and find that it first compiles all c files in <code>lib/</code> to lib-*.o by</p>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$(obj)</span>/lib-%.o: <span class="variable">$(srctree)</span>/lib/%.c FORCE</span><br><span class="line">	<span class="variable">$(<span class="built_in">call</span> if_changed_rule,cc_o_c)</span></span><br></pre></td></tr></table></figure>
+
+<p>and then use <code>objcopy</code> to add <code>__efistub_</code> prefix to them.</p>
+<figure class="highlight makefile"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br></pre></td><td class="code"><pre><span class="line"><span class="variable">$(obj)</span>/%.stub.o: <span class="variable">$(obj)</span>/%.o FORCE</span><br><span class="line">	<span class="variable">$(<span class="built_in">call</span> if_changed,stubcopy)</span></span><br><span class="line"></span><br><span class="line"><span class="comment">#</span></span><br><span class="line"><span class="comment"># Strip debug sections and some other sections that may legally contain</span></span><br><span class="line"><span class="comment"># absolute relocations, so that we can inspect the remaining sections for</span></span><br><span class="line"><span class="comment"># such relocations. If none are found, regenerate the output object, but</span></span><br><span class="line"><span class="comment"># this time, use objcopy and leave all sections in place.</span></span><br><span class="line"><span class="comment">#</span></span><br><span class="line">quiet_cmd_stubcopy = STUBCPY <span class="variable">$@</span></span><br><span class="line">      cmd_stubcopy =							\</span><br><span class="line">	<span class="variable">$(STRIP)</span> --strip-debug -o <span class="variable">$@</span> <span class="variable">$&lt;</span>;				\</span><br><span class="line">	if <span class="variable">$(OBJDUMP)</span> -r <span class="variable">$@</span> | grep $(STUBCOPY_RELOC-y); then		\</span><br><span class="line">		echo <span class="string">"<span class="variable">$@</span>: absolute symbol references not allowed in the EFI stub"</span> &gt;&amp;2; \</span><br><span class="line">		/bin/false;						\</span><br><span class="line">	fi;								\</span><br><span class="line">	<span class="variable">$(OBJCOPY)</span> $(STUBCOPY_FLAGS-y) <span class="variable">$&lt;</span> <span class="variable">$@</span></span><br></pre></td></tr></table></figure>
+
+<p>However, it doesn’t change the corresponding <code>.bc</code>, so error occurs.</p>
+<p>If we don’t care about efi, simply remove <code>drivers/firmware/efi/libstub/.*.o.bc</code> in <code>vmlinux.llvm.manifest</code> and then</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">llvm-link -o vmlinux.bc `cat vmlinux.llvm.manifest`</span><br></pre></td></tr></table></figure>
+
+<p>can solve this problem.</p>
+
+            </div>
+          
+
+    
+      <footer class="post-footer">
+		
+		<div class="post-tags">
+		  
+			<a href="/tags/LLVM/">LLVM</a>
+		  
+			<a href="/tags/Linux/">Linux</a>
+		  
+		</div>
+		
+
+        
+        
+  <nav class="post-nav">
+    
+    
+      <a class="next" href="/minix-ipc.html">
+        <span class="next-text nav-default">Minix IPC</span>
+        <span class="prev-text nav-mobile">Next</span>
+        <i class="iconfont icon-right"></i>
+      </a>
+    
+  </nav>
+
+        
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+      </footer>
+    
+  </article>
+
+    </div>
+
+      </div>
+
+      <footer id="colophon"><span class="copyright-year">
+    
+        &copy;
+    
+    2019
+    <span class="footer-author">Xie Xun.</span>
+    <span class="power-by">
+        Powered by <a class="hexo-link" href="https://hexo.io/">Hexo</a> and <a class="theme-link" href="https://github.com/frostfan/hexo-theme-polarbear">Polar Bear</a>.
+    </span>
+    <span>
+        Except where otherwise noted, content on this site is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by/4.0/">Creative Commons Attribution 4.0 International License</a>.
+    </span>
+</span>
+
+      </footer>
+
+      <div class="back-to-top" id="back-to-top">
+        <i class="iconfont icon-up"></i>
+      </div>
+    </div>
+    
+
+
+    
+
+
+
+
+  
+    <script type="text/javascript" src="/lib/jquery/jquery-3.1.1.min.js"></script>
+  
+
+  
+
+    <script type="text/javascript" src="/js/src/theme.js?v=1.1"></script>
+<script type="text/javascript" src="/js/src/bootstrap.js?v=1.1"></script>
+
+  </body>
+</html>

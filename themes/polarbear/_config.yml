@@ -18,7 +18,7 @@ rss: default
 # ===========================================
 menu:
   Archives: /archives
-  About: /about
+  About: /about/
 
 # ===========================================
 # Widget Settings

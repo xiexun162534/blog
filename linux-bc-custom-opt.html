@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang>
+  <head><meta name="generator" content="Hexo 3.9.0">
+    
+<meta charset="UTF-8">
+<meta http-equiv="X-UA-Compatible" content="IE=edge">
+<meta name="viewport" content="width=device-width,user-scalable=no,initial-scale=1,minimum-scale=1,maximum-scale=1">
+
+
+<meta http-equiv="Cache-Control" content="no-transform">
+<meta http-equiv="Cache-Control" content="no-siteapp">
+
+
+
+  <meta name="description" content="Generate Linux Kernel LLVM Bitcode with Custom Optimization">
+
+
+
+
+  <meta name="keywords" content="Linux,LLVM,">
+
+
+
+
+
+  <link rel="alternate" href="/default" title="THE Blog">
+
+
+
+
+  <link rel="shortcut icon" type="image/x-icon" href="/favicon.ico?v=1.1">
+
+
+
+<link rel="canonical" href="http://blog.xiexun.tech/linux-bc-custom-opt.html">
+
+
+<meta name="description" content="In Compile Linux Kernel to LLVM Bitcode we use wllvm to generate the LLVM bitcode of Linux kernel. when analyzing the kernel, we sometimes need to disable some optimization passes. However, it’s hard">
+<meta name="keywords" content="Linux,LLVM">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Generate Linux Kernel LLVM Bitcode with Custom Optimization">
+<meta property="og:url" content="http://blog.xiexun.tech/linux-bc-custom-opt.html">
+<meta property="og:site_name" content="THE Blog">
+<meta property="og:description" content="In Compile Linux Kernel to LLVM Bitcode we use wllvm to generate the LLVM bitcode of Linux kernel. when analyzing the kernel, we sometimes need to disable some optimization passes. However, it’s hard">
+<meta property="og:locale" content="en">
+<meta property="og:updated_time" content="2020-03-10T03:43:20.367Z">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:title" content="Generate Linux Kernel LLVM Bitcode with Custom Optimization">
+<meta name="twitter:description" content="In Compile Linux Kernel to LLVM Bitcode we use wllvm to generate the LLVM bitcode of Linux kernel. when analyzing the kernel, we sometimes need to disable some optimization passes. However, it’s hard">
+
+
+<link rel="stylesheet" type="text/css" href="/css/style.css?v=1.1">
+<link href="https://fonts.googleapis.com/css?family=Open+Sans" rel="stylesheet">
+
+
+
+
+
+<script type="text/javascript">
+  var themeConfig = {
+    fancybox: {
+      enable: false
+    },
+  };
+</script>
+
+
+
+
+  
+
+
+
+    <title> Generate Linux Kernel LLVM Bitcode with Custom Optimization - THE Blog </title>
+  </head>
+
+  <body>
+    <div id="page">
+      <header id="masthead"><div class="site-header-inner">
+    <h1 class="site-title">
+        <a href="/." class="logo">THE Blog</a>
+    </h1>
+
+    <nav id="nav-top">
+        
+            <ul id="menu-top" class="nav-top-items">
+                
+                    <li class="menu-item">
+                        <a href="/archives">
+                            
+                            
+                                Archives
+                            
+                        </a>
+                    </li>
+                
+                    <li class="menu-item">
+                        <a href="/about/">
+                            
+                            
+                                About
+                            
+                        </a>
+                    </li>
+                
+            </ul>
+        
+  </nav>
+</div>
+
+      </header>
+      <div id="content">
+        
+    <div id="primary">
+        
+  <article class="post">
+    <header class="post-header">
+      <h1 class="post-title">
+        
+          Generate Linux Kernel LLVM Bitcode with Custom Optimization
+        
+      </h1>
+
+      <time class="post-time">
+          Mar 08 2020
+      </time>
+    </header>
+
+
+
+    
+            <div class="post-content">
+            <p>In <a href="/compile-linux-llvm.html">Compile Linux Kernel to LLVM Bitcode</a> we use wllvm to generate the LLVM bitcode of Linux kernel. when analyzing the kernel, we sometimes need to disable some optimization passes. However, it’s hard to do with clang. First compiling it to <code>-O0</code> IR and then applying some optimization passes on it seems easier.</p>
+<p>The optimization level of the LLVM IR is <code>-O2</code> by default. If we need an <code>-O0</code> LLVM IR, we need to modify the kernel compilation flag.</p>
+<figure class="highlight shell"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">make KCFLAG='-O0' CC=wllvm</span><br></pre></td></tr></table></figure>
+
+<p>However, it doesn’t work because some kernel code cannot be compiled with <code>-O0</code>.</p>
+<p>Fortunately, we have another way to get our <code>-O0</code> LLVM IR.</p>
+<p>When wllvm generates LLVM bitcode (<code>.filename.o.bc</code>) for a C file, it also generates the command to compile the file in <code>.filename.o.cmd</code>. We can get the command by:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br></pre></td><td class="code"><pre><span class="line">path=<span class="string">'/path/to/our/output'</span></span><br><span class="line">awk_cmd=<span class="string">'&#123; </span></span><br><span class="line"><span class="string">s = ""; </span></span><br><span class="line"><span class="string">ofile = 0;</span></span><br><span class="line"><span class="string">for (i = 3; i &lt;= NF; i++)</span></span><br><span class="line"><span class="string">&#123;</span></span><br><span class="line"><span class="string">   if (ofile == 1)</span></span><br><span class="line"><span class="string">   &#123;</span></span><br><span class="line"><span class="string">      s = s "'</span><span class="string">"<span class="variable">$path</span>"</span><span class="string">'" " ";</span></span><br><span class="line"><span class="string">      ofile = 0;</span></span><br><span class="line"><span class="string">   &#125;</span></span><br><span class="line"><span class="string">   else</span></span><br><span class="line"><span class="string">   &#123;</span></span><br><span class="line"><span class="string">      if ($i == "-o")</span></span><br><span class="line"><span class="string">         ofile = 1;</span></span><br><span class="line"><span class="string">      s = s $i " ";</span></span><br><span class="line"><span class="string">   &#125;</span></span><br><span class="line"><span class="string">&#125;</span></span><br><span class="line"><span class="string">print s &#125;'</span></span><br><span class="line">cmd_line=`head -n 1 <span class="variable">$1</span> | awk <span class="string">"<span class="variable">$awk_cmd</span>"</span>`</span><br></pre></td></tr></table></figure>
+
+<p>The output file path will be replaced by the path we provide.</p>
+<p>This command generates native code. To get LLVM bitcode, we need to add <code>-emit-llvm</code>. To disable optimization, we need to add <code>-mllvm -disable-llvm-optzns</code>.</p>
+<p>After generating <code>-O0</code> bitcode, we can optimize it with any passes we want. Finally link all bitcodes we generate and we get a kernel bitcode with custom optimization.</p>
+<p>Below is an example script:</p>
+<figure class="highlight bash"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br><span class="line">28</span><br><span class="line">29</span><br><span class="line">30</span><br><span class="line">31</span><br><span class="line">32</span><br><span class="line">33</span><br><span class="line">34</span><br><span class="line">35</span><br><span class="line">36</span><br><span class="line">37</span><br><span class="line">38</span><br><span class="line">39</span><br><span class="line">40</span><br><span class="line">41</span><br><span class="line">42</span><br><span class="line">43</span><br><span class="line">44</span><br><span class="line">45</span><br><span class="line">46</span><br><span class="line">47</span><br><span class="line">48</span><br><span class="line">49</span><br><span class="line">50</span><br><span class="line">51</span><br><span class="line">52</span><br><span class="line">53</span><br><span class="line">54</span><br><span class="line">55</span><br><span class="line">56</span><br><span class="line">57</span><br><span class="line">58</span><br><span class="line">59</span><br><span class="line">60</span><br><span class="line">61</span><br><span class="line">62</span><br><span class="line">63</span><br><span class="line">64</span><br><span class="line">65</span><br><span class="line">66</span><br><span class="line">67</span><br><span class="line">68</span><br><span class="line">69</span><br><span class="line">70</span><br><span class="line">71</span><br><span class="line">72</span><br><span class="line">73</span><br><span class="line">74</span><br><span class="line">75</span><br><span class="line">76</span><br><span class="line">77</span><br><span class="line">78</span><br><span class="line">79</span><br><span class="line">80</span><br><span class="line">81</span><br><span class="line">82</span><br><span class="line">83</span><br><span class="line">84</span><br><span class="line">85</span><br><span class="line">86</span><br><span class="line">87</span><br><span class="line">88</span><br><span class="line">89</span><br><span class="line">90</span><br><span class="line">91</span><br><span class="line">92</span><br><span class="line">93</span><br><span class="line">94</span><br><span class="line">95</span><br><span class="line">96</span><br><span class="line">97</span><br><span class="line">98</span><br><span class="line">99</span><br><span class="line">100</span><br><span class="line">101</span><br><span class="line">102</span><br><span class="line">103</span><br><span class="line">104</span><br><span class="line">105</span><br><span class="line">106</span><br><span class="line">107</span><br><span class="line">108</span><br><span class="line">109</span><br><span class="line">110</span><br><span class="line">111</span><br><span class="line">112</span><br><span class="line">113</span><br><span class="line">114</span><br><span class="line">115</span><br><span class="line">116</span><br><span class="line">117</span><br><span class="line">118</span><br><span class="line">119</span><br><span class="line">120</span><br><span class="line">121</span><br><span class="line">122</span><br><span class="line">123</span><br></pre></td><td class="code"><pre><span class="line"><span class="meta">#!/bin/bash</span></span><br><span class="line"></span><br><span class="line"></span><br><span class="line">llvm_linker=llvm-link</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> get_cmd</span><br><span class="line">&#123;</span><br><span class="line">    path=<span class="string">"<span class="variable">$2</span>"</span></span><br><span class="line">    </span><br><span class="line">    <span class="comment"># change output file name</span></span><br><span class="line">    awk_cmd=<span class="string">'&#123; </span></span><br><span class="line"><span class="string">    s = ""; </span></span><br><span class="line"><span class="string">    ofile = 0;</span></span><br><span class="line"><span class="string">    for (i = 3; i &lt;= NF; i++)</span></span><br><span class="line"><span class="string">    &#123;</span></span><br><span class="line"><span class="string">      if (ofile == 1)</span></span><br><span class="line"><span class="string">      &#123;</span></span><br><span class="line"><span class="string">        s = s "'</span><span class="string">"<span class="variable">$path</span>"</span><span class="string">'" " ";</span></span><br><span class="line"><span class="string">        ofile = 0;</span></span><br><span class="line"><span class="string">      &#125;</span></span><br><span class="line"><span class="string">      else</span></span><br><span class="line"><span class="string">      &#123;</span></span><br><span class="line"><span class="string">        if ($i == "-o")</span></span><br><span class="line"><span class="string">           ofile = 1;</span></span><br><span class="line"><span class="string">        s = s $i " ";</span></span><br><span class="line"><span class="string">      &#125;</span></span><br><span class="line"><span class="string">    &#125;</span></span><br><span class="line"><span class="string">    print s &#125;'</span></span><br><span class="line">    cmd_line=`head -n 1 <span class="variable">$1</span> | awk <span class="string">"<span class="variable">$awk_cmd</span>"</span>`</span><br><span class="line">    </span><br><span class="line">    <span class="comment"># output LLVM IR</span></span><br><span class="line">    cmd_line=<span class="string">"<span class="variable">$&#123;cmd_line&#125;</span> -emit-llvm"</span></span><br><span class="line">    <span class="comment"># disable opt</span></span><br><span class="line">    cmd_line=<span class="string">"<span class="variable">$&#123;cmd_line&#125;</span> -mllvm -disable-llvm-optzns"</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="variable">$cmd_line</span></span><br><span class="line">    <span class="built_in">return</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">function</span> compile_opt</span><br><span class="line">&#123;</span><br><span class="line">    cmd_path=<span class="string">"<span class="variable">$1</span>"</span></span><br><span class="line">    basepath=<span class="string">"<span class="variable">$2</span>"</span></span><br><span class="line">    tmp_path=<span class="string">"<span class="variable">$&#123;basepath&#125;</span>.tmp.bc"</span></span><br><span class="line">    output_path=<span class="string">"<span class="variable">$&#123;basepath&#125;</span>.opt.bc"</span></span><br><span class="line">    cmd=`get_cmd <span class="string">"<span class="variable">$cmd_path</span>"</span> <span class="string">"<span class="variable">$tmp_path</span>"</span>`</span><br><span class="line">    <span class="built_in">eval</span> <span class="string">"<span class="variable">$cmd</span>"</span> 2&gt; /dev/null</span><br><span class="line">    cmd_result=$?</span><br><span class="line">    <span class="keyword">if</span> [ ! -e <span class="string">"<span class="variable">$tmp_path</span>"</span> ] || [ <span class="variable">$cmd_result</span> -ne 0 ]</span><br><span class="line">    <span class="keyword">then</span></span><br><span class="line">        <span class="built_in">exit</span> 1</span><br><span class="line">    <span class="keyword">fi</span></span><br><span class="line">    opt -always-inline -inline -mem2reg -simplifycfg -instcombine <span class="string">"<span class="variable">$tmp_path</span>"</span> -o <span class="string">"<span class="variable">$output_path</span>"</span></span><br><span class="line">    cmd_result=$?</span><br><span class="line">    <span class="keyword">if</span> [ ! -e <span class="string">"<span class="variable">$output_path</span>"</span> ] || [ <span class="variable">$cmd_result</span> -ne 0 ]</span><br><span class="line">    <span class="keyword">then</span></span><br><span class="line">        <span class="built_in">exit</span> 1</span><br><span class="line">    <span class="keyword">fi</span></span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> <span class="built_in">getopts</span> <span class="string">":l:"</span> opt; <span class="keyword">do</span></span><br><span class="line">    <span class="keyword">case</span> <span class="variable">$opt</span> <span class="keyword">in</span></span><br><span class="line">        l) llvm_linker=<span class="variable">$OPTARG</span></span><br><span class="line">           ;;</span><br><span class="line">        \?) <span class="built_in">echo</span> <span class="string">"Usage: -l &lt;llvm-link&gt;"</span> 1&gt;&amp;2</span><br><span class="line">            <span class="built_in">exit</span> 1</span><br><span class="line">            ;;</span><br><span class="line">    <span class="keyword">esac</span></span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"><span class="built_in">shift</span> $((OPTIND-1))</span><br><span class="line">from_file=<span class="variable">$1</span></span><br><span class="line"><span class="keyword">if</span> [ -z <span class="string">"<span class="variable">$from_file</span>"</span> ]</span><br><span class="line"><span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">"no input file"</span> 1&gt;&amp;2</span><br><span class="line">    <span class="built_in">exit</span> 1</span><br><span class="line"><span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line">extract-bc -l <span class="literal">false</span> -m <span class="variable">$from_file</span></span><br><span class="line">manifest=<span class="string">"<span class="variable">$&#123;from_file&#125;</span>.llvm.manifest"</span></span><br><span class="line"><span class="keyword">if</span> [ ! -r <span class="string">"<span class="variable">$manifest</span>"</span> ]</span><br><span class="line"><span class="keyword">then</span></span><br><span class="line">    <span class="built_in">echo</span> <span class="string">"no manifest file"</span> 1&gt;&amp;2</span><br><span class="line">    <span class="built_in">exit</span> 1</span><br><span class="line"><span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line">tmpmanifest=<span class="string">"<span class="variable">$&#123;from_file&#125;</span>.tmp.manifest"</span></span><br><span class="line"><span class="built_in">echo</span> -n <span class="string">""</span> &gt; <span class="string">"<span class="variable">$tmpmanifest</span>"</span></span><br><span class="line"></span><br><span class="line">cat <span class="string">"<span class="variable">$manifest</span>"</span> |</span><br><span class="line">    <span class="keyword">while</span> <span class="built_in">read</span> o_bc_name;</span><br><span class="line">    <span class="keyword">do</span></span><br><span class="line">        basename=`basename <span class="string">"<span class="variable">$&#123;o_bc_name%.o.bc&#125;</span>"</span>`</span><br><span class="line">        <span class="comment"># basename="$&#123;basename#.&#125;"</span></span><br><span class="line">        dir=<span class="string">"<span class="variable">$&#123;o_bc_name%/*&#125;</span>"</span></span><br><span class="line">        basepath=<span class="string">"<span class="variable">$&#123;dir&#125;</span>/<span class="variable">$&#123;basename&#125;</span>"</span></span><br><span class="line">        <span class="keyword">if</span> [ -z <span class="string">"<span class="variable">$dir</span>"</span> ] &amp;&amp; [ -z <span class="string">"<span class="variable">$basename</span>"</span> ]</span><br><span class="line">        <span class="keyword">then</span></span><br><span class="line">            <span class="built_in">continue</span></span><br><span class="line">        <span class="keyword">fi</span></span><br><span class="line">        </span><br><span class="line">        cmd_path=<span class="string">"<span class="variable">$&#123;basepath&#125;</span>.o.cmd"</span></span><br><span class="line">        <span class="keyword">if</span> [ ! -r <span class="string">"<span class="variable">$&#123;cmd_path&#125;</span>"</span> ]</span><br><span class="line">        <span class="keyword">then</span></span><br><span class="line">            <span class="built_in">echo</span> <span class="string">"<span class="variable">$&#123;cmd_path&#125;</span> not found"</span></span><br><span class="line">            <span class="built_in">continue</span></span><br><span class="line">        <span class="keyword">fi</span></span><br><span class="line"></span><br><span class="line">        <span class="keyword">while</span> [ `<span class="built_in">jobs</span> | wc -l` -ge 8 ]</span><br><span class="line">        <span class="keyword">do</span></span><br><span class="line">            sleep 0.1</span><br><span class="line">        <span class="keyword">done</span></span><br><span class="line">        output_path=<span class="string">"<span class="variable">$&#123;basepath&#125;</span>.opt.bc"</span></span><br><span class="line">        compile_opt <span class="string">"<span class="variable">$cmd_path</span>"</span> <span class="string">"<span class="variable">$basepath</span>"</span> &amp;</span><br><span class="line">        <span class="built_in">echo</span> <span class="string">"<span class="variable">$output_path</span>"</span></span><br><span class="line">        <span class="built_in">echo</span> <span class="string">"<span class="variable">$output_path</span>"</span> &gt;&gt; <span class="string">"<span class="variable">$&#123;tmpmanifest&#125;</span>"</span></span><br><span class="line">    <span class="keyword">done</span></span><br><span class="line"></span><br><span class="line"><span class="keyword">while</span> [ `<span class="built_in">jobs</span> | wc -l` -ne 0 ]</span><br><span class="line"><span class="keyword">do</span></span><br><span class="line">    sleep 1</span><br><span class="line"><span class="keyword">done</span></span><br><span class="line"></span><br><span class="line">outputfile=<span class="string">"<span class="variable">$&#123;from_file&#125;</span>.opt.bc"</span></span><br><span class="line"><span class="variable">$llvm_linker</span> -o <span class="string">"<span class="variable">$outputfile</span>"</span> `cat <span class="string">"<span class="variable">$&#123;tmpmanifest&#125;</span>"</span>`</span><br></pre></td></tr></table></figure>
+
+
+            </div>
+          
+
+    
+      <footer class="post-footer">
+		
+		<div class="post-tags">
+		  
+			<a href="/tags/Linux/">Linux</a>
+		  
+			<a href="/tags/LLVM/">LLVM</a>
+		  
+		</div>
+		
+
+        
+        
+  <nav class="post-nav">
+    
+    
+      <a class="next" href="/break-memcg.html">
+        <span class="next-text nav-default">Break Memcg Memory Limitation</span>
+        <span class="prev-text nav-mobile">Next</span>
+        <i class="iconfont icon-right"></i>
+      </a>
+    
+  </nav>
+
+        
+  <div class="comments" id="comments">
+    
+  </div>
+
+
+      </footer>
+    
+  </article>
+
+    </div>
+
+      </div>
+
+      <footer id="colophon"><span class="copyright-year">
+    
+        &copy;
+    
+        2019 -
+    
+    2020
+    <span class="footer-author">Xie Xun.</span>
+    <span class="power-by">
+        Powered by <a class="hexo-link" href="https://hexo.io/">Hexo</a> and <a class="theme-link" href="https://github.com/frostfan/hexo-theme-polarbear">Polar Bear</a>.
+    </span>
+    <span>
+        Except where otherwise noted, content on this site is licensed under a <a rel="license" href="http://creativecommons.org/licenses/by-sa/4.0/">Creative Commons Attribution-ShareAlike 4.0 International License</a>.
+    </span>
+</span>
+
+      </footer>
+
+      <div class="back-to-top" id="back-to-top">
+        <i class="iconfont icon-up"></i>
+      </div>
+    </div>
+    
+
+
+    
+
+
+
+
+  
+    <script type="text/javascript" src="/lib/jquery/jquery-3.1.1.min.js"></script>
+  
+
+  
+
+    <script type="text/javascript" src="/js/src/theme.js?v=1.1"></script>
+<script type="text/javascript" src="/js/src/bootstrap.js?v=1.1"></script>
+
+  </body>
+</html>

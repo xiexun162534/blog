@@ -11,7 +11,6 @@
     "hexo-generator-category": "latest",
     "hexo-generator-index": "latest",
     "hexo-generator-tag": "latest",
-    "hexo-helper-live2d": "latest",
     "hexo-renderer-ejs": "latest",
     "hexo-renderer-marked": "latest",
     "hexo-renderer-scss": "latest",
